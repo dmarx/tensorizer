@@ -131,6 +131,7 @@ def check_deserialized(
     model_name: str,
     allow_subset: bool = False,
     include_non_persistent_buffers: bool = True,
+    ignore_contents: bool = False,
 ):
     orig_sd = model_digest(model_name, include_non_persistent_buffers)
 
@@ -165,11 +166,12 @@ def check_deserialized(
             f" {orig_info.dtype}",
         )
 
-        test_case.assertEqual(
-            v_info.hash,
-            orig_info.hash,
-            f"Contents don't match for tensor {k}",
-        )
+        if not ignore_contents:
+            test_case.assertEqual(
+                v_info.hash,
+                orig_info.hash,
+                f"Contents don't match for tensor {k}",
+            )
 
     del orig_sd
     gc.collect()
@@ -829,3 +831,20 @@ class TestVerification(unittest.TestCase):
                             self.assertTrue(
                                 status, f"Unexpected mismatch on {tensor_name}"
                             )
+
+# # temporarily separate test
+# # to invoke: 
+# #   $ source _venv/bin/activate
+# #   $ python -m unittest -k TestZeros
+# class TestZeros(unittest.TestCase):
+#     def test_dummy(self):
+#         self.assertTrue(True)
+#     def test_zero_tensor_detection(self):
+#         #x = torch.zeros(2,3) # not a meta tensor
+#         #x = torch.empty(2,3) # also not a meta tensor
+#         #x = torch.empty(2,3, device='meta') # this gets us a meta tensor
+#         #x = torch.zeros(2,3, device='meta') # also a meta tensor
+#         x = torch.tensor([0,1], device='meta') # this is also technically a meta tensor...
+#         self.assertTrue(x.is_meta)
+#         # fails! reading time.
+#         # https://pytorch.org/torchdistx/latest/fake_tensor_and_deferred_init.html
